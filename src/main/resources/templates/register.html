@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create account | Attendly</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="auth-layout">
+    <section class="brand-panel" aria-label="Attendly">
+        <a class="brand" th:href="@{/login}"><span class="brand-mark">A</span> attendly</a>
+        <div class="brand-copy">
+            <p class="eyebrow">A BETTER CLASSROOM RHYTHM</p>
+            <h1>Make every<br>day count.</h1>
+            <p class="brand-note">Bring student records and daily attendance into one calm, reliable workspace.</p>
+        </div>
+        <div class="brand-foot"><span class="signal"></span> Your attendance workspace</div>
+    </section>
+    <section class="form-panel">
+        <div class="form-wrap">
+            <p class="eyebrow mobile-eyebrow">GET STARTED</p>
+            <h2>Create your account</h2>
+            <p class="form-intro">Set up your attendance workspace in a moment.</p>
+
+            <form th:action="@{/register}" th:object="${registrationForm}" method="post" class="auth-form">
+                <label for="fullName">Your name</label>
+                <input id="fullName" th:field="*{fullName}" type="text" autocomplete="name" placeholder="Full name" required>
+                <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
+
+                <label for="email">Email address</label>
+                <input id="email" th:field="*{email}" type="email" autocomplete="email" placeholder="you@example.com" required>
+                <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+
+                <label for="password">Password</label>
+                <input id="password" th:field="*{password}" type="password" autocomplete="new-password" placeholder="At least 8 characters" required>
+                <p class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
+
+                <label for="confirmPassword">Confirm password</label>
+                <input id="confirmPassword" th:field="*{confirmPassword}" type="password" autocomplete="new-password" placeholder="Enter password again" required>
+                <p class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></p>
+
+                <button class="primary-button" type="submit">Create account <span aria-hidden="true">→</span></button>
+            </form>
+            <p class="switch-auth">Already registered? <a th:href="@{/login}">Sign in</a></p>
+        </div>
+        <footer class="form-footer">Attendance workspace <span>·</span> Secure sign-in</footer>
+    </section>
+</main>
+</body>
+</html>

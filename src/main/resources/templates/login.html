@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in | Attendly</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="auth-layout">
+    <section class="brand-panel" aria-label="Attendly">
+        <a class="brand" th:href="@{/login}"><span class="brand-mark">A</span> attendly</a>
+        <div class="brand-copy">
+            <p class="eyebrow">ATTENDANCE, IN FOCUS</p>
+            <h1>Every day<br>starts here.</h1>
+            <p class="brand-note">A clearer view of the people and patterns that move your classroom forward.</p>
+        </div>
+        <div class="brand-foot"><span class="signal"></span> Your attendance workspace</div>
+    </section>
+    <section class="form-panel">
+        <div class="form-wrap">
+            <p class="eyebrow mobile-eyebrow">WELCOME BACK</p>
+            <h2>Sign in</h2>
+            <p class="form-intro">Use your account details to continue.</p>
+
+            <div class="notice success" th:if="${param.registered}">Your account is ready. Sign in to continue.</div>
+            <div class="notice" th:if="${param.error}">Email or password is incorrect.</div>
+            <div class="notice success" th:if="${param.logout}">You have signed out.</div>
+
+            <form th:action="@{/login}" method="post" class="auth-form">
+                <label for="email">Email address</label>
+                <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required autofocus>
+
+                <div class="label-row">
+                    <label for="password">Password</label>
+                </div>
+                <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+
+                <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+            </form>
+            <p class="switch-auth">New to Attendly? <a th:href="@{/register}">Create an account</a></p>
+        </div>
+        <footer class="form-footer">Attendance workspace <span>·</span> Secure sign-in</footer>
+    </section>
+</main>
+</body>
+</html>

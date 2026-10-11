@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>Attendance Dashboard</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #eff6ff, #f8fafc);
+            color: #1f2937;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header-actions { display: flex; align-items: center; gap: 14px; }
+        .header-actions form { display: inline; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.06);
+        }
+        .card h3 { margin: 0 0 10px; color: #475569; }
+        .card .value { font-size: 28px; font-weight: bold; }
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.06);
+            margin-bottom: 30px;
+        }
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        form {
+            display: grid;
+            gap: 12px;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+        input, select, button {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+        }
+        input, select { width: 100%; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background: #f8fafc;
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .present { background: #dcfce7; color: #166534; }
+        .absent { background: #fee2e2; color: #991b1b; }
+        .late { background: #fef3c7; color: #92400e; }
+        .muted { color: #64748b; }
+        .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .section-heading h2 { margin: 0; }
+        .absence-filter { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 13px; }
+        .absence-filter input { width: auto; min-width: 150px; }
+        .student-profiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 20px; }
+        .student-profile { min-width: 0; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+        .profile-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .profile-avatar { display: grid; flex: 0 0 42px; width: 42px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #1e3a8a; background: #dbeafe; font-weight: bold; }
+        .profile-heading h3 { overflow-wrap: anywhere; margin: 0 0 4px; font-size: 16px; }
+        .profile-heading p, .profile-detail { overflow-wrap: anywhere; margin: 0; color: #64748b; font-size: 13px; }
+        .profile-detail + .profile-detail { margin-top: 7px; }
+        .profile-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 15px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+        .profile-stat { display: grid; gap: 3px; }
+        .profile-stat span { color: #64748b; font-size: 12px; }
+        .profile-stat strong { font-size: 14px; }
+        .empty-state { padding: 22px 12px; color: #64748b; text-align: center; }
+        .form-message { margin: 0; padding: 10px 12px; border-radius: 6px; font-size: 13px; }
+        .form-message.error { color: #991b1b; background: #fee2e2; }
+        .form-message.success { color: #166534; background: #dcfce7; }
+        button:disabled { cursor: wait; opacity: .65; }
+        .register-controls { display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; max-width: 720px; margin-top: 18px; }
+        .register-controls label { display: grid; gap: 6px; color: #475569; font-size: 12px; font-weight: 700; }
+        .roll-number-button { padding: 8px 11px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1d4ed8; background: #eff6ff; font-weight: 700; }
+        .roll-number-button:hover { background: #dbeafe; }
+        .register-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .register-actions button { padding: 8px 12px; }
+        .register-actions .mark-present { background: #15803d; }
+        .register-actions .mark-absent { background: #b91c1c; }
+        .register-actions .mark-late { background: #a16207; }
+        .late-time-control { display: inline-flex; align-items: center; gap: 8px; color: #475569; font-size: 12px; }
+        .late-time-control input { width: auto; }
+        .register-status { display: inline-block; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .register-status.present { color: #166534; background: #dcfce7; }
+        .register-status.absent { color: #991b1b; background: #fee2e2; }
+        .register-status.late { color: #92400e; background: #fef3c7; }
+        .register-status.unmarked { color: #475569; background: #f1f5f9; }
+        .delete-record-btn {
+            padding: 7px 10px;
+            border: 1px solid #fca5a5;
+            border-radius: 6px;
+            color: #991b1b;
+            background: #fff1f2;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .clear-date-btn {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff7ed;
+            color: #9a5b00;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        @media (max-width: 640px) {
+            .register-controls { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .section-heading { align-items: flex-start; flex-direction: column; }
+            .absence-filter { width: 100%; }
+            .absence-filter input { flex: 1; min-width: 0; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Attendance Dashboard</h1>
+        <div class="header-actions">
+            <span class="muted" th:text="${userEmail}"></span>
+            <button id="refreshBtn" type="button">Refresh</button>
+            <form th:action="@{/logout}" method="post"><button type="submit">Sign out</button></form>
+        </div>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Total Students</h3>
+            <div id="totalStudents" class="value">0</div>
+        </div>
+        <div class="card">
+            <h3>Present Today</h3>
+            <div id="presentToday" class="value">0</div>
+        </div>
+        <div class="card">
+            <h3>Absent Today</h3>
+            <div id="absentToday" class="value">0</div>
+        </div>
+        <div class="card">
+            <h3>Late Today</h3>
+            <div id="lateToday" class="value">0</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="section-heading">
+            <h2>Absent Students</h2>
+            <label class="absence-filter" for="absenceDateFilter">
+                Filter date
+                <input type="date" id="absenceDateFilter" aria-label="Filter absences by date">
+            </label>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Roll number</th>
+                <th>Class</th>
+                <th>Date</th>
+                <th>Remarks</th>
+            </tr>
+            </thead>
+            <tbody id="absenceTableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <div class="section-heading">
+            <h2>Class Attendance Register</h2>
+            <p class="muted">Click a roll number to mark attendance.</p>
+        </div>
+        <div class="register-controls">
+            <label for="registerDate">Attendance date
+                <input type="date" id="registerDate" required>
+            </label>
+            <label for="gradeFilter">Grade
+                <select id="gradeFilter"><option value="">All grades</option></select>
+            </label>
+            <label for="sectionFilter">Section
+                <select id="sectionFilter"><option value="">All sections</option></select>
+            </label>
+        </div>
+        <p id="registerMessage" class="form-message" role="status" aria-live="polite" hidden></p>
+        <table>
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Roll number</th>
+                <th>Grade / section</th>
+                <th>Attendance</th>
+            </tr>
+            </thead>
+            <tbody id="classRegisterBody"></tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <div class="section-heading">
+            <h2>Late Arrivals</h2>
+            <label class="absence-filter" for="lateDateFilter">
+                Filter date
+                <input type="date" id="lateDateFilter" aria-label="Filter late arrivals by date">
+            </label>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Roll number</th>
+                <th>Grade / section</th>
+                <th>Arrival time</th>
+                <th>Remarks</th>
+            </tr>
+            </thead>
+            <tbody id="lateArrivalsBody"></tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <h2>Add Student</h2>
+        <form id="studentForm">
+            <input type="text" id="studentNameInput" placeholder="Student name" required>
+            <input type="text" id="rollNumber" placeholder="Roll number" required>
+            <input type="text" id="section" placeholder="Section (for example, A)" required>
+            <button type="submit">Save Student</button>
+            <p id="studentFormMessage" class="form-message" role="status" aria-live="polite" hidden></p>
+        </form>
+    </div>
+
+    <div class="panel">
+        <h2>Student Profiles</h2>
+        <div id="studentProfiles" class="student-profiles"></div>
+    </div>
+
+    <div class="panel">
+        <div class="section-heading">
+            <h2>Attendance Records</h2>
+            <button id="clearAttendanceBtn" type="button" class="clear-date-btn">Clear selected date</button>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Arrival</th>
+                <th>Remarks</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="attendanceTableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <h2>Student Performance Summary</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Student</th>
+                <th>Total</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>Late</th>
+                <th>Rate</th>
+            </tr>
+            </thead>
+            <tbody id="summaryBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const studentApi = '/api/students';
+    const attendanceApi = '/api/attendance';
+    let studentsData = [];
+    let attendanceData = [];
+    let summaryData = [];
+    let expandedStudentId = null;
+
+    function localDateString() {
+        const now = new Date();
+        const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        return localDate.toISOString().slice(0, 10);
+    }
+
+    function appendCell(row, value) {
+        const cell = document.createElement('td');
+        cell.textContent = value == null || value === '' ? '—' : String(value);
+        row.appendChild(cell);
+        return cell;
+    }
+
+    function showEmptyState(tbody, columnCount, message) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = columnCount;
+        cell.className = 'empty-state';
+        cell.textContent = message;
+        row.appendChild(cell);
+        tbody.appendChild(row);
+    }
+
+    async function fetchJson(url, options = {}) {
+        const headers = new Headers(options.headers || {});
+        const method = (options.method || 'GET').toUpperCase();
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+            headers.set(document.querySelector('meta[name="_csrf_header"]').content,
+                document.querySelector('meta[name="_csrf"]').content);
+        }
+        const response = await fetch(url, {...options, headers});
+        if (!response.ok) {
+            const responseText = await response.text();
+            let message = responseText || 'Request failed';
+            try {
+                message = JSON.parse(responseText).message || message;
+            } catch {
+                // Keep the response text when the server did not return JSON.
+            }
+            throw new Error(message);
+        }
+
+        const contentLength = response.headers.get('content-length');
+        if (response.status === 204 || response.status === 205 || contentLength === '0') {
+            return null;
+        }
+
+        const responseText = await response.text();
+        if (!responseText || responseText.trim() === '') {
+            return null;
+        }
+
+        try {
+            return JSON.parse(responseText);
+        } catch {
+            return responseText;
+        }
+    }
+
+    function showStudentFormMessage(message, isError) {
+        const messageElement = document.getElementById('studentFormMessage');
+        messageElement.textContent = message;
+        messageElement.className = `form-message ${isError ? 'error' : 'success'}`;
+        messageElement.hidden = false;
+    }
+
+    function studentGrade(student) {
+        return student.grade || (student.section ? '' : student.className || 'Unassigned');
+    }
+
+    function studentSection(student) {
+        return student.section || 'Unassigned';
+    }
+
+    function studentClassLabel(student) {
+        const grade = student.grade || (!student.section ? student.className : '');
+        const section = student.section;
+        if (grade && section) return `Grade ${grade} / Section ${section}`;
+        if (grade) return `Grade ${grade}`;
+        if (section) return `Section ${section}`;
+        return 'Class not set';
+    }
+
+    function studentForRecord(record) {
+        return studentsData.find(student => String(student.id) === String(record.student?.id))
+            || record.student
+            || {};
+    }
+
+    function formatArrivalTime(value) {
+        if (!value) return 'Time not recorded';
+        const [hours, minutes] = value.split(':').map(Number);
+        const time = new Date(Date.UTC(1970, 0, 1, hours, minutes));
+        return new Intl.DateTimeFormat(undefined, {hour: 'numeric', minute: '2-digit'})
+            .format(time);
+    }
+
+    function localTimeString() {
+        const now = new Date();
+        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function updateRegisterFilters() {
+        const gradeSelect = document.getElementById('gradeFilter');
+        const sectionSelect = document.getElementById('sectionFilter');
+        const previousGrade = gradeSelect.value;
+        const previousSection = sectionSelect.value;
+        const grades = [...new Set(studentsData.map(studentGrade).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b));
+
+        gradeSelect.replaceChildren(new Option('All grades', ''));
+        grades.forEach(grade => gradeSelect.add(new Option(grade, grade)));
+        gradeSelect.value = grades.includes(previousGrade) ? previousGrade : '';
+
+        const sections = [...new Set(studentsData
+            .filter(student => !gradeSelect.value || studentGrade(student) === gradeSelect.value)
+            .map(studentSection))].sort((a, b) => a.localeCompare(b));
+        sectionSelect.replaceChildren(new Option('All sections', ''));
+        sections.forEach(section => sectionSelect.add(new Option(section, section)));
+        sectionSelect.value = sections.includes(previousSection) ? previousSection : '';
+    }
+
+    async function loadStudents() {
+        studentsData = await fetchJson(studentApi);
+        document.getElementById('totalStudents').textContent = studentsData.length;
+        updateRegisterFilters();
+        renderStudentProfiles();
+        renderClassRegister();
+    }
+
+    async function loadAttendance() {
+        attendanceData = await fetchJson(attendanceApi);
+        const tbody = document.getElementById('attendanceTableBody');
+        tbody.innerHTML = '';
+
+        const today = localDateString();
+        let present = 0;
+        let absent = 0;
+        let late = 0;
+
+        attendanceData.forEach(item => {
+            const row = document.createElement('tr');
+            const status = String(item.status || '');
+            const statusClass = ['present', 'absent', 'late'].includes(status.toLowerCase())
+                ? status.toLowerCase()
+                : '';
+            if (item.date === today) {
+                if (status.toLowerCase() === 'present') present++;
+                if (status.toLowerCase() === 'absent') absent++;
+                if (status.toLowerCase() === 'late') late++;
+            }
+            appendCell(row, item.studentName || item.student?.name || 'Unknown');
+            appendCell(row, item.date);
+            const statusCell = appendCell(row, status);
+            const statusPill = document.createElement('span');
+            statusPill.className = `status-pill ${statusClass}`;
+            statusPill.textContent = status;
+            statusCell.replaceChildren(statusPill);
+            appendCell(row, item.arrivalTime ? formatArrivalTime(item.arrivalTime) : '—');
+            appendCell(row, item.remarks || '—');
+
+            const actionCell = document.createElement('td');
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'delete-record-btn';
+            deleteButton.textContent = 'Delete';
+            deleteButton.addEventListener('click', async () => {
+                try {
+                    await fetchJson(`${attendanceApi}/${item.id}`, {method: 'DELETE'});
+                    await loadAttendance();
+                    await loadSummary();
+                } catch (error) {
+                    alert(error.message || 'Could not delete the attendance record.');
+                }
+            });
+            actionCell.appendChild(deleteButton);
+            row.appendChild(actionCell);
+            tbody.appendChild(row);
+        });
+
+        document.getElementById('presentToday').textContent = present;
+        document.getElementById('absentToday').textContent = absent;
+        document.getElementById('lateToday').textContent = late;
+        renderAbsences();
+        renderLateArrivals();
+        renderClassRegister();
+        if (attendanceData.length === 0) {
+            showEmptyState(tbody, 6, 'No attendance records yet.');
+        }
+    }
+
+    async function loadSummary() {
+        summaryData = await fetchJson(`${attendanceApi}/summary`);
+        const tbody = document.getElementById('summaryBody');
+        tbody.innerHTML = '';
+
+        summaryData.forEach(item => {
+            const row = document.createElement('tr');
+            appendCell(row, item.studentName);
+            appendCell(row, item.totalDays);
+            appendCell(row, item.present);
+            appendCell(row, item.absent);
+            appendCell(row, item.late);
+            appendCell(row, `${Number(item.attendanceRate || 0).toFixed(1)}%`);
+            tbody.appendChild(row);
+        });
+        renderStudentProfiles();
+        if (summaryData.length === 0) {
+            showEmptyState(tbody, 6, 'Add students to see attendance summaries.');
+        }
+    }
+
+    function renderAbsences() {
+        const tbody = document.getElementById('absenceTableBody');
+        tbody.innerHTML = '';
+        const selectedDate = document.getElementById('absenceDateFilter').value;
+        const absences = attendanceData
+            .filter(item => String(item.status || '').toLowerCase() === 'absent')
+            .filter(item => !selectedDate || item.date === selectedDate)
+            .sort((first, second) => String(second.date).localeCompare(String(first.date)));
+
+        absences.forEach(item => {
+            const row = document.createElement('tr');
+            const student = studentForRecord(item);
+            appendCell(row, item.studentName || student.name || 'Unknown');
+            appendCell(row, student.rollNumber);
+            appendCell(row, studentClassLabel(student));
+            appendCell(row, item.date);
+            appendCell(row, item.remarks);
+            tbody.appendChild(row);
+        });
+        if (absences.length === 0) {
+            showEmptyState(tbody, 5, selectedDate ? 'No absences on this date.' : 'No absent records yet.');
+        }
+    }
+
+    function renderLateArrivals() {
+        const tbody = document.getElementById('lateArrivalsBody');
+        tbody.replaceChildren();
+        const selectedDate = document.getElementById('lateDateFilter').value;
+        const lateRecords = attendanceData
+            .filter(item => String(item.status || '').toLowerCase() === 'late')
+            .filter(item => !selectedDate || item.date === selectedDate)
+            .sort((first, second) => String(second.date).localeCompare(String(first.date)));
+
+        lateRecords.forEach(item => {
+            const student = studentForRecord(item);
+            const row = document.createElement('tr');
+            appendCell(row, item.studentName || student.name || 'Unknown');
+            appendCell(row, student.rollNumber);
+            appendCell(row, studentClassLabel(student));
+            appendCell(row, formatArrivalTime(item.arrivalTime));
+            appendCell(row, item.remarks);
+            tbody.appendChild(row);
+        });
+        if (lateRecords.length === 0) {
+            showEmptyState(tbody, 5, selectedDate ? 'No late arrivals on this date.' : 'No late arrivals recorded.');
+        }
+    }
+
+    function renderStudentProfiles() {
+        const container = document.getElementById('studentProfiles');
+        container.replaceChildren();
+        const summaryByStudent = new Map(summaryData.map(item => [String(item.studentId), item]));
+
+        studentsData.forEach(student => {
+            const profile = document.createElement('article');
+            profile.className = 'student-profile';
+
+            const heading = document.createElement('div');
+            heading.className = 'profile-heading';
+            const avatar = document.createElement('span');
+            avatar.className = 'profile-avatar';
+            avatar.setAttribute('aria-hidden', 'true');
+            avatar.textContent = String(student.name || '?').trim().charAt(0).toUpperCase();
+            const identity = document.createElement('div');
+            const name = document.createElement('h3');
+            name.textContent = student.name || 'Unnamed student';
+            const group = document.createElement('p');
+            group.textContent = `${studentClassLabel(student)} · ${student.rollNumber || 'No roll number'}`;
+            identity.append(name, group);
+            heading.append(avatar, identity);
+            profile.appendChild(heading);
+
+            const email = document.createElement('p');
+            email.className = 'profile-detail';
+            email.textContent = `Email: ${student.email || 'Not provided'}`;
+            const phone = document.createElement('p');
+            phone.className = 'profile-detail';
+            phone.textContent = `Phone: ${student.phone || 'Not provided'}`;
+            profile.append(email, phone);
+
+            const summary = summaryByStudent.get(String(student.id));
+            const rate = Number(summary?.attendanceRate || 0);
+            const profileStats = document.createElement('div');
+            profileStats.className = 'profile-stats';
+            [
+                ['Attendance rate', `${rate.toFixed(1)}%`],
+                ['Present days', summary?.present || 0],
+                ['Absent days', summary?.absent || 0],
+                ['Late days', summary?.late || 0]
+            ].forEach(([label, value]) => {
+                const stat = document.createElement('div');
+                stat.className = 'profile-stat';
+                const statLabel = document.createElement('span');
+                statLabel.textContent = label;
+                const statValue = document.createElement('strong');
+                statValue.textContent = value;
+                stat.append(statLabel, statValue);
+                profileStats.appendChild(stat);
+            });
+            profile.appendChild(profileStats);
+            container.appendChild(profile);
+        });
+
+        if (studentsData.length === 0) {
+            const emptyState = document.createElement('p');
+            emptyState.className = 'empty-state';
+            emptyState.textContent = 'No student profiles yet. Add a student to get started.';
+            container.appendChild(emptyState);
+        }
+    }
+
+    function renderClassRegister() {
+        const tbody = document.getElementById('classRegisterBody');
+        const grade = document.getElementById('gradeFilter').value;
+        const section = document.getElementById('sectionFilter').value;
+        const date = document.getElementById('registerDate').value;
+        const visibleStudents = studentsData
+            .filter(student => !grade || studentGrade(student) === grade)
+            .filter(student => !section || studentSection(student) === section)
+            .sort((first, second) => String(first.rollNumber).localeCompare(String(second.rollNumber), undefined, {numeric: true}));
+        tbody.replaceChildren();
+
+        visibleStudents.forEach(student => {
+            const row = document.createElement('tr');
+            appendCell(row, student.name);
+            const rollCell = document.createElement('td');
+            const rollButton = document.createElement('button');
+            rollButton.type = 'button';
+            rollButton.className = 'roll-number-button';
+            rollButton.textContent = student.rollNumber || '—';
+            rollButton.setAttribute('aria-expanded', String(String(expandedStudentId) === String(student.id)));
+            rollButton.addEventListener('click', () => {
+                expandedStudentId = String(expandedStudentId) === String(student.id) ? null : student.id;
+                renderClassRegister();
+            });
+            rollCell.appendChild(rollButton);
+            row.appendChild(rollCell);
+            appendCell(row, studentClassLabel(student));
+
+            const statusCell = document.createElement('td');
+            const record = attendanceData.find(item => String(item.student?.id) === String(student.id)
+                && item.date === date);
+            if (record) {
+                const status = String(record.status || '').toLowerCase();
+                const statusLabel = document.createElement('span');
+                statusLabel.className = `register-status ${['present', 'absent', 'late'].includes(status) ? status : 'unmarked'}`;
+                statusLabel.textContent = status === 'late' && record.arrivalTime
+                    ? `Late · ${formatArrivalTime(record.arrivalTime)}`
+                    : record.status;
+                statusCell.appendChild(statusLabel);
+            } else {
+                const statusLabel = document.createElement('span');
+                statusLabel.className = 'register-status unmarked';
+                statusLabel.textContent = 'Not marked';
+                statusCell.appendChild(statusLabel);
+            }
+            row.appendChild(statusCell);
+            tbody.appendChild(row);
+
+            if (String(expandedStudentId) === String(student.id)) {
+                const actionRow = document.createElement('tr');
+                const actionCell = document.createElement('td');
+                actionCell.colSpan = 4;
+                const actions = document.createElement('div');
+                actions.className = 'register-actions';
+                const lateTimeLabel = document.createElement('label');
+                lateTimeLabel.className = 'late-time-control';
+                lateTimeLabel.textContent = 'Arrival time';
+                const lateTimeInput = document.createElement('input');
+                lateTimeInput.type = 'time';
+                lateTimeInput.value = localTimeString();
+                lateTimeInput.setAttribute('aria-label', `Arrival time for ${student.name}`);
+                lateTimeLabel.appendChild(lateTimeInput);
+                actions.appendChild(lateTimeLabel);
+                [
+                    ['Present', 'mark-present'],
+                    ['Absent', 'mark-absent'],
+                    ['Late', 'mark-late']
+                ].forEach(([status, className]) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = className;
+                    button.textContent = `Mark ${status}`;
+                    button.addEventListener('click', () => saveRegisterAttendance(
+                        student.id,
+                        status,
+                        status === 'Late' ? lateTimeInput.value : null
+                    ));
+                    actions.appendChild(button);
+                });
+                actionCell.appendChild(actions);
+                actionRow.appendChild(actionCell);
+                tbody.appendChild(actionRow);
+            }
+        });
+
+        if (visibleStudents.length === 0) {
+            showEmptyState(tbody, 4, 'No students in this grade and section yet.');
+        }
+    }
+
+    async function saveRegisterAttendance(studentId, status, arrivalTime) {
+        const date = document.getElementById('registerDate').value;
+        const message = document.getElementById('registerMessage');
+        if (!date) {
+            message.textContent = 'Choose an attendance date first.';
+            message.className = 'form-message error';
+            message.hidden = false;
+            return;
+        }
+        if (status === 'Late' && !arrivalTime) {
+            message.textContent = 'Enter the late arrival time.';
+            message.className = 'form-message error';
+            message.hidden = false;
+            return;
+        }
+
+        try {
+            await fetchJson(attendanceApi, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({student: {id: Number(studentId)}, date, status, arrivalTime})
+            });
+            expandedStudentId = null;
+            message.textContent = `${status} saved for this student.`;
+            message.className = 'form-message success';
+            message.hidden = false;
+            await Promise.all([loadAttendance(), loadSummary()]);
+        } catch (error) {
+            message.textContent = error.message || 'Could not save attendance.';
+            message.className = 'form-message error';
+            message.hidden = false;
+        }
+    }
+
+    document.getElementById('studentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        document.getElementById('studentFormMessage').hidden = true;
+        const payload = {
+            name: document.getElementById('studentNameInput').value,
+            rollNumber: document.getElementById('rollNumber').value,
+            section: document.getElementById('section').value
+        };
+
+        try {
+            await fetchJson(studentApi, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            e.target.reset();
+            await loadStudents();
+            await loadSummary();
+            showStudentFormMessage('Student added successfully.', false);
+        } catch (error) {
+            showStudentFormMessage(error.message || 'Could not save the student.', true);
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+        await loadStudents();
+        await loadAttendance();
+        await loadSummary();
+    });
+
+    document.getElementById('clearAttendanceBtn').addEventListener('click', async () => {
+        const targetDate = document.getElementById('registerDate').value || localDateString();
+        try {
+            await fetchJson(`${attendanceApi}/date/${targetDate}`, {method: 'DELETE'});
+            await loadAttendance();
+            await loadSummary();
+        } catch (error) {
+            alert(error.message || 'Could not clear the attendance records.');
+        }
+    });
+
+    document.getElementById('absenceDateFilter').addEventListener('change', renderAbsences);
+    document.getElementById('gradeFilter').addEventListener('change', () => {
+        updateRegisterFilters();
+        renderClassRegister();
+    });
+    document.getElementById('sectionFilter').addEventListener('change', renderClassRegister);
+    document.getElementById('registerDate').addEventListener('change', renderClassRegister);
+    document.getElementById('lateDateFilter').addEventListener('change', renderLateArrivals);
+    document.getElementById('registerDate').value = localDateString();
+    document.getElementById('lateDateFilter').value = localDateString();
+
+    loadStudents();
+    loadAttendance();
+    loadSummary();
+</script>
+</body>
+</html>
