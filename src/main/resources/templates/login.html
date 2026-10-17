@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign in | Attendly</title>
-    <link rel="stylesheet" th:href="@{/css/auth.css}">
+    <link rel="stylesheet" href="/css/auth.css" th:href="@{/css/auth.css}">
 </head>
 <body>
 <main class="auth-layout">
@@ -23,11 +23,11 @@
             <h2>Sign in</h2>
             <p class="form-intro">Use your account details to continue.</p>
 
-            <div class="notice success" th:if="${param.registered}">Your account is ready. Sign in to continue.</div>
-            <div class="notice" th:if="${param.error}">Email or password is incorrect.</div>
-            <div class="notice success" th:if="${param.logout}">You have signed out.</div>
+            <div class="notice success" data-query-param="registered" th:if="${param.registered}" hidden>Your account is ready. Sign in to continue.</div>
+            <div class="notice" data-query-param="error" th:if="${param.error}" hidden>Email or password is incorrect.</div>
+            <div class="notice success" data-query-param="logout" th:if="${param.logout}" hidden>You have signed out.</div>
 
-            <form th:action="@{/login}" method="post" class="auth-form">
+            <form id="loginForm" action="/api/auth/login" th:action="@{/api/auth/login}" method="post" class="auth-form">
                 <label for="email">Email address</label>
                 <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required autofocus>
 
@@ -36,6 +36,7 @@
                 </div>
                 <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
 
+                <p id="loginMessage" class="field-error" role="alert" hidden></p>
                 <button class="primary-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
             </form>
             <p class="switch-auth">New to Attendly? <a th:href="@{/register}">Create an account</a></p>
@@ -43,5 +44,48 @@
         <footer class="form-footer">Attendance workspace <span>·</span> Secure sign-in</footer>
     </section>
 </main>
+<script>
+    const loginForm = document.getElementById('loginForm');
+    const loginMessage = document.getElementById('loginMessage');
+
+    async function csrfHeader() {
+        const response = await fetch('/api/auth/csrf', {credentials: 'same-origin', cache: 'no-store'});
+        if (!response.ok) throw new Error('Could not start a secure sign-in. Please try again.');
+        const csrf = await response.json();
+        const cookie = document.cookie.split(';').map(value => value.trim())
+            .find(value => value.startsWith('XSRF-TOKEN='));
+        if (!cookie) throw new Error('Could not start a secure sign-in. Please try again.');
+        return [csrf.headerName, decodeURIComponent(cookie.slice('XSRF-TOKEN='.length))];
+    }
+
+    document.querySelectorAll('[data-query-param]').forEach(notice => {
+        notice.hidden = !new URLSearchParams(window.location.search).has(notice.dataset.queryParam);
+    });
+
+    loginForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submitButton = loginForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        loginMessage.hidden = true;
+
+        try {
+            const [headerName, token] = await csrfHeader();
+            const formData = new URLSearchParams(new FormData(loginForm));
+            formData.delete('_csrf');
+            const response = await fetch(loginForm.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {[headerName]: token},
+                body: formData
+            });
+            if (!response.ok) throw new Error('Sign-in failed. Please try again.');
+            window.location.assign(response.redirected ? response.url : '/');
+        } catch (error) {
+            loginMessage.textContent = error.message;
+            loginMessage.hidden = false;
+            submitButton.disabled = false;
+        }
+    });
+</script>
 </body>
 </html>

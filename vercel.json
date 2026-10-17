@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "outputDirectory": "src/main/resources",
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/templates/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/templates/login.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/templates/register.html"
+    },
+    {
+      "source": "/css/:path*",
+      "destination": "/static/css/:path*"
+    }
+  ]
+}

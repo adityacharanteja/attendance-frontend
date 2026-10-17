@@ -168,9 +168,9 @@
     <div class="header">
         <h1>Attendance Dashboard</h1>
         <div class="header-actions">
-            <span class="muted" th:text="${userEmail}"></span>
+            <span id="userEmail" class="muted" th:text="${userEmail}"></span>
             <button id="refreshBtn" type="button">Refresh</button>
-            <form th:action="@{/logout}" method="post"><button type="submit">Sign out</button></form>
+            <button id="logoutBtn" type="button">Sign out</button>
         </div>
     </div>
 
@@ -356,10 +356,18 @@
         const headers = new Headers(options.headers || {});
         const method = (options.method || 'GET').toUpperCase();
         if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-            headers.set(document.querySelector('meta[name="_csrf_header"]').content,
-                document.querySelector('meta[name="_csrf"]').content);
+            const csrfResponse = await fetch('/api/auth/csrf', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            if (!csrfResponse.ok) throw new Error('Could not verify this request. Please refresh and try again.');
+            const csrf = await csrfResponse.json();
+            const cookie = document.cookie.split(';').map(value => value.trim())
+                .find(value => value.startsWith('XSRF-TOKEN='));
+            if (!cookie) throw new Error('Could not verify this request. Please refresh and try again.');
+            headers.set(csrf.headerName, decodeURIComponent(cookie.slice('XSRF-TOKEN='.length)));
         }
-        const response = await fetch(url, {...options, headers});
+        const response = await fetch(url, {...options, headers, credentials: 'same-origin'});
         if (!response.ok) {
             const responseText = await response.text();
             let message = responseText || 'Request failed';
@@ -368,7 +376,9 @@
             } catch {
                 // Keep the response text when the server did not return JSON.
             }
-            throw new Error(message);
+            const error = new Error(message);
+            error.status = response.status;
+            throw error;
         }
 
         const contentLength = response.headers.get('content-length');
@@ -833,9 +843,30 @@
     document.getElementById('registerDate').value = localDateString();
     document.getElementById('lateDateFilter').value = localDateString();
 
-    loadStudents();
-    loadAttendance();
-    loadSummary();
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        try {
+            await fetchJson('/api/auth/logout', {method: 'POST'});
+            window.location.assign('/login?logout');
+        } catch (error) {
+            alert(error.message || 'Could not sign out.');
+        }
+    });
+
+    async function initializeDashboard() {
+        try {
+            const user = await fetchJson('/api/auth/me');
+            document.getElementById('userEmail').textContent = user.email;
+            await Promise.all([loadStudents(), loadAttendance(), loadSummary()]);
+        } catch (error) {
+            if (error.status === 401) {
+                window.location.replace('/login');
+                return;
+            }
+            alert(error.message || 'Could not load the attendance dashboard.');
+        }
+    }
+
+    initializeDashboard();
 </script>
 </body>
 </html>

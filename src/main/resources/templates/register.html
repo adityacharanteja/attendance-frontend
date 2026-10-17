@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create account | Attendly</title>
-    <link rel="stylesheet" th:href="@{/css/auth.css}">
+    <link rel="stylesheet" href="/css/auth.css" th:href="@{/css/auth.css}">
 </head>
 <body>
 <main class="auth-layout">
@@ -23,23 +23,24 @@
             <h2>Create your account</h2>
             <p class="form-intro">Set up your attendance workspace in a moment.</p>
 
-            <form th:action="@{/register}" th:object="${registrationForm}" method="post" class="auth-form">
+            <form id="registrationForm" action="/api/auth/register" th:action="@{/api/auth/register}" method="post" class="auth-form">
                 <label for="fullName">Your name</label>
-                <input id="fullName" th:field="*{fullName}" type="text" autocomplete="name" placeholder="Full name" required>
+                <input id="fullName" name="fullName" th:field="*{fullName}" type="text" autocomplete="name" placeholder="Full name" required>
                 <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
 
                 <label for="email">Email address</label>
-                <input id="email" th:field="*{email}" type="email" autocomplete="email" placeholder="you@example.com" required>
+                <input id="email" name="email" th:field="*{email}" type="email" autocomplete="email" placeholder="you@example.com" required>
                 <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
 
                 <label for="password">Password</label>
-                <input id="password" th:field="*{password}" type="password" autocomplete="new-password" placeholder="At least 8 characters" required>
+                <input id="password" name="password" th:field="*{password}" type="password" autocomplete="new-password" placeholder="At least 8 characters" required>
                 <p class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
 
                 <label for="confirmPassword">Confirm password</label>
-                <input id="confirmPassword" th:field="*{confirmPassword}" type="password" autocomplete="new-password" placeholder="Enter password again" required>
+                <input id="confirmPassword" name="confirmPassword" th:field="*{confirmPassword}" type="password" autocomplete="new-password" placeholder="Enter password again" required>
                 <p class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></p>
 
+                <p id="registrationMessage" class="field-error" role="alert" hidden></p>
                 <button class="primary-button" type="submit">Create account <span aria-hidden="true">→</span></button>
             </form>
             <p class="switch-auth">Already registered? <a th:href="@{/login}">Sign in</a></p>
@@ -47,5 +48,45 @@
         <footer class="form-footer">Attendance workspace <span>·</span> Secure sign-in</footer>
     </section>
 </main>
+<script>
+    const registrationForm = document.getElementById('registrationForm');
+    const registrationMessage = document.getElementById('registrationMessage');
+
+    async function csrfHeader() {
+        const response = await fetch('/api/auth/csrf', {credentials: 'same-origin', cache: 'no-store'});
+        if (!response.ok) throw new Error('Could not start secure registration. Please try again.');
+        const csrf = await response.json();
+        const cookie = document.cookie.split(';').map(value => value.trim())
+            .find(value => value.startsWith('XSRF-TOKEN='));
+        if (!cookie) throw new Error('Could not start secure registration. Please try again.');
+        return [csrf.headerName, decodeURIComponent(cookie.slice('XSRF-TOKEN='.length))];
+    }
+
+    registrationForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submitButton = registrationForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        registrationMessage.hidden = true;
+
+        try {
+            const [headerName, token] = await csrfHeader();
+            const formData = Object.fromEntries(new FormData(registrationForm));
+            delete formData._csrf;
+            const response = await fetch(registrationForm.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json', [headerName]: token},
+                body: JSON.stringify(formData)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Could not create the account.');
+            window.location.assign('/login?registered');
+        } catch (error) {
+            registrationMessage.textContent = error.message || 'Could not create the account.';
+            registrationMessage.hidden = false;
+            submitButton.disabled = false;
+        }
+    });
+</script>
 </body>
 </html>
