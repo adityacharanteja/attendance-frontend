@@ -3,6 +3,10 @@
   "outputDirectory": "src/main/resources",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "/api?__proxy_path=:path*"
+    },
+    {
       "source": "/",
       "destination": "/templates/login.html"
     },
